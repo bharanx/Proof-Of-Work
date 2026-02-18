@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+
+  # ── API Backend ──────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pow-api
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - pow-db:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pow-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ── IPFS Node (local dev) ────────────────────────────────────────────────────
+  ipfs:
+    image: ipfs/go-ipfs:latest
+    container_name: pow-ipfs
+    ports:
+      - "4001:4001"   # swarm
+      - "5001:5001"   # API
+      - "8080:8080"   # gateway
+    volumes:
+      - ipfs-data:/data/ipfs
+    restart: unless-stopped
+
+volumes:
+  pow-db:
+  ipfs-data:

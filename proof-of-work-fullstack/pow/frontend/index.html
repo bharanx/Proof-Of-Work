@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProofOfWork — Global Labor Protocol</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg:#0a0a0a; --surface:#111; --border:#222; --accent:#00ff88;
+    --accent2:#ff6b35; --accent3:#4fc3f7; --text:#e8e8e0; --muted:#555;
+    --danger:#ff4444; --warning:#ffb800;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+  nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(10,10,10,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .logo{font-family:'Space Mono',monospace;font-size:1rem;color:var(--accent);letter-spacing:2px}
+  .logo span{color:var(--text)}
+  nav .nav-tabs{display:flex;gap:4px;flex-wrap:wrap}
+  nav button{background:none;border:none;color:var(--muted);font-family:'Space Mono',monospace;font-size:0.68rem;padding:6px 12px;cursor:pointer;border-radius:4px;transition:all 0.2s;letter-spacing:1px}
+  nav button:hover,nav button.active{color:var(--accent);background:rgba(0,255,136,0.08)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite}
+  .status-dot.offline{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  main{position:relative;z-index:1}
+  .section{display:none;padding:28px;max-width:1100px;margin:0 auto}
+  .section.active{display:block;animation:fadeIn 0.3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;line-height:1.1}
+  h2{font-size:1rem;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:18px}
+  h3{font-size:0.9rem;font-weight:600;margin-bottom:8px}
+  p{color:#aaa;font-size:0.88rem;line-height:1.6}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+  .hero-tag{display:inline-block;font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--accent);border:1px solid var(--accent);padding:4px 10px;border-radius:2px;letter-spacing:2px;margin-bottom:16px}
+  .stats-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:28px}
+  .stat .num{font-family:'Space Mono',monospace;font-size:1.5rem;color:var(--accent);display:block}
+  .stat .lbl{font-size:0.72rem;color:var(--muted);letter-spacing:1px}
+
+  .passport{border:1px solid var(--accent);border-radius:8px;padding:22px;background:linear-gradient(135deg,#0d1a14,#0a0a0a);position:relative;overflow:hidden}
+  .passport::before{content:'PROOF OF WORK';position:absolute;top:12px;right:16px;font-family:'Space Mono',monospace;font-size:0.58rem;color:rgba(0,255,136,0.15);letter-spacing:3px}
+  .passport-header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+  .avatar{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent3));display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;color:#000;flex-shrink:0}
+  .passport-id{font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:2px}
+  .badge-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .badge{font-family:'Space Mono',monospace;font-size:0.62rem;padding:3px 9px;border-radius:20px;letter-spacing:1px}
+  .badge.green{background:rgba(0,255,136,0.1);color:var(--accent);border:1px solid rgba(0,255,136,0.3)}
+  .badge.blue{background:rgba(79,195,247,0.1);color:var(--accent3);border:1px solid rgba(79,195,247,0.3)}
+  .badge.orange{background:rgba(255,107,53,0.1);color:var(--accent2);border:1px solid rgba(255,107,53,0.3)}
+
+  .score-bar{margin:7px 0}
+  .score-bar label{font-size:0.72rem;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:3px}
+  .bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px;transition:width 1s ease}
+  .bar-fill.green{background:var(--accent)}.bar-fill.blue{background:var(--accent3)}.bar-fill.orange{background:var(--accent2)}
+
+  .log-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:0.7rem}
+  .log-table th{color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);letter-spacing:1px}
+  .log-table td{padding:9px 10px;border-bottom:1px solid #1a1a1a;color:#bbb}
+  .hash{color:var(--accent3);font-size:0.62rem}
+  .tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:0.58rem;letter-spacing:1px}
+  .tag.ok{background:rgba(0,255,136,0.15);color:var(--accent)}
+  .tag.warn{background:rgba(255,184,0,0.15);color:var(--warning)}
+  .tag.err{background:rgba(255,68,68,0.15);color:var(--danger)}
+
+  input[type=text],input[type=number],input[type=password],select,textarea{background:#0f0f0f;border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:0.78rem;padding:9px 12px;border-radius:6px;width:100%;outline:none;transition:border-color 0.2s}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  select option{background:#111}
+  .form-col{display:flex;flex-direction:column;gap:9px}
+
+  button.btn{background:var(--accent);color:#000;border:none;padding:10px 18px;font-family:'Space Mono',monospace;font-size:0.72rem;font-weight:700;letter-spacing:1px;border-radius:6px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+  button.btn:hover{background:#00e07a;transform:translateY(-1px)}
+  button.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+  button.btn.secondary{background:none;color:var(--accent);border:1px solid var(--accent)}
+  button.btn.secondary:hover{background:rgba(0,255,136,0.08);transform:none}
+  button.btn.orange{background:var(--accent2);color:#fff}
+  button.btn.orange:hover{background:#ff8050}
+  button.btn.red{background:var(--danger);color:#fff}
+
+  .alert{padding:10px 14px;border-radius:6px;font-size:0.78rem;margin:10px 0;display:none;font-family:'Space Mono',monospace;word-break:break-all}
+  .alert.success{background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);color:var(--accent)}
+  .alert.error{background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--danger)}
+  .alert.warn{background:rgba(255,184,0,0.1);border:1px solid rgba(255,184,0,0.3);color:var(--warning)}
+  .alert.show{display:block;animation:fadeIn 0.3s}
+
+  .verify-flow{display:flex;align-items:center;gap:0;margin:20px 0;overflow-x:auto;padding-bottom:8px}
+  .verify-node{display:flex;flex-direction:column;align-items:center;min-width:100px;padding:14px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:0.72rem;transition:all 0.3s;flex-shrink:0}
+  .verify-node.verified{border-color:var(--accent);background:rgba(0,255,136,0.05)}
+  .verify-node.pending{border-color:var(--warning);background:rgba(255,184,0,0.05)}
+  .verify-node .icon{font-size:1.4rem;margin-bottom:5px}
+  .verify-arrow{flex:1;height:2px;min-width:16px;background:var(--border)}
+  .verify-arrow.active{background:var(--accent)}
+
+  .anomaly-item{display:flex;align-items:center;gap:12px;padding:11px;border-radius:6px;margin-bottom:8px}
+  .anomaly-item.high{background:rgba(255,68,68,0.05);border:1px solid rgba(255,68,68,0.2)}
+  .anomaly-item.medium{background:rgba(255,184,0,0.05);border:1px solid rgba(255,184,0,0.2)}
+  .anomaly-item.low{background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15)}
+  .anomaly-info{flex:1}
+  .anomaly-info strong{font-size:0.82rem;display:block}
+  .anomaly-info span{font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace}
+  .risk-pill{font-size:0.62rem;padding:3px 9px;border-radius:10px;font-family:'Space Mono',monospace;letter-spacing:1px;white-space:nowrap}
+  .risk-pill.high{background:rgba(255,68,68,0.15);color:var(--danger)}
+  .risk-pill.medium{background:rgba(255,184,0,0.15);color:var(--warning)}
+  .risk-pill.low{background:rgba(0,255,136,0.15);color:var(--accent)}
+
+  .ticker-wrap{overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:7px 0;margin-bottom:28px}
+  .ticker{display:flex;gap:60px;white-space:nowrap;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:1px;animation:ticker 22s linear infinite}
+  @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .ticker span{color:var(--accent)}
+
+  .api-bar{display:flex;align-items:center;gap:10px;background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:7px;padding:10px 14px;margin-bottom:18px;font-family:'Space Mono',monospace;font-size:0.72rem}
+
+  canvas{display:block;border-radius:8px;background:var(--surface);border:1px solid var(--border);width:100%}
+
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,255,136,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .credit-big{font-size:3rem;font-weight:800;font-family:'Space Mono',monospace;line-height:1}
+  .mono{font-family:'Space Mono',monospace;font-size:0.72rem}
+
+  .chart-wrap{height:140px;display:flex;align-items:flex-end;gap:5px;padding:14px 0 0;border-bottom:1px solid var(--border)}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .bar-col .b{width:100%;border-radius:3px 3px 0 0;transition:height 0.8s ease;min-height:4px}
+
+  /* QR */
+  .qr-box{border:2px solid var(--accent2);border-radius:8px;padding:20px;text-align:center;background:rgba(255,107,53,0.04)}
+  #qr-img{max-width:200px;margin:12px auto;display:block;border-radius:6px}
+
+  /* Workers table */
+  .workers-list{max-height:300px;overflow-y:auto}
+  .worker-row{display:flex;align-items:center;gap:12px;padding:10px;border-bottom:1px solid #1a1a1a;cursor:pointer;transition:background 0.15s}
+  .worker-row:hover{background:#141414}
+  .worker-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent3));display:flex;align-items:center;justify-content:center;font-weight:800;color:#000;font-size:0.9rem;flex-shrink:0}
+  .worker-info{flex:1}
+  .worker-info strong{font-size:0.85rem;display:block}
+  .worker-info small{font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace}
+  .rep-badge{font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">PROOF<span>OF</span>WORK</div>
+  <div class="nav-tabs">
+    <button class="active" onclick="goto('home')">HOME</button>
+    <button onclick="goto('passport')">PASSPORT</button>
+    <button onclick="goto('verify')">VERIFY</button>
+    <button onclick="goto('supplychain')">SUPPLY CHAIN</button>
+    <button onclick="goto('finance')">FINANCE</button>
+    <button onclick="goto('ai')">AI MONITOR</button>
+    <button onclick="goto('workers')">WORKERS</button>
+  </div>
+  <div class="status-dot" id="api-dot" title="API Status"></div>
+</nav>
+
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker">
+    <span>⬡</span> CONNECTING TO POW PROTOCOL... &nbsp;|&nbsp;
+    <span>⬡</span> CONNECTING TO POW PROTOCOL... &nbsp;|&nbsp;
+  </div>
+</div>
+
+<!-- ═══ HOME ══════════════════════════════════════════════════════════════════ -->
+<section id="home" class="section active">
+  <div class="hero-tag">GLOBAL LABOR PROTOCOL v0.1 — TESTNET</div>
+  <h1>The world's first<br><span style="color:var(--accent)">verifiable work record</span><br>owned by the worker.</h1>
+  <p style="max-width:540px;margin:14px 0 24px">A blockchain protocol where workers collectively verify each other's labor — creating tamper-proof records no employer, government, or bank can dispute.</p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <button class="btn" onclick="goto('passport')">CREATE WORK PASSPORT</button>
+    <button class="btn secondary" onclick="goto('verify')">SIMULATE PEER VERIFY</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><span class="num" id="s-workers">—</span><span class="lbl">WORKERS ONCHAIN</span></div>
+    <div class="stat"><span class="num" id="s-verifs">—</span><span class="lbl">VERIFICATIONS</span></div>
+    <div class="stat"><span class="num" id="s-certs">—</span><span class="lbl">SUPPLY CERTS</span></div>
+    <div class="stat"><span class="num" id="s-blocks">—</span><span class="lbl">BLOCK HEIGHT</span></div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2>PROTOCOL PILLARS</h2>
+    <div class="grid-3">
+      <div class="card"><div style="font-size:1.7rem;margin-bottom:8px">🪪</div><h3>Worker Passport</h3><p>Cryptographic identity with peer-verified work history. Portable globally. Tamper-proof.</p></div>
+      <div class="card"><div style="font-size:1.7rem;margin-bottom:8px">🔗</div><h3>Supply Chain Oracle</h3><p>Brands prove ethical sourcing with on-chain labor data — signed by worker collectives.</p></div>
+      <div class="card"><div style="font-size:1.7rem;margin-bottom:8px">💳</div><h3>Labor as Collateral</h3><p>Verified work history unlocks global credit for the unbanked. No bank account required.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PASSPORT ══════════════════════════════════════════════════════════════ -->
+<section id="passport" class="section">
+  <h2>WORKER PASSPORT</h2>
+  <div id="auth-notice" class="api-bar" style="display:flex">
+    <span>🔑</span> <span id="auth-status-text">Not logged in. Register or log in below.</span>
+    <button class="btn secondary" style="margin-left:auto;font-size:0.65rem;padding:5px 10px" onclick="logout()" id="logout-btn" style="display:none">LOGOUT</button>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Register New Worker</h3>
+        <p style="margin-bottom:14px">Generate your cryptographic work identity on the testnet.</p>
+        <div class="form-col">
+          <input type="text" id="w-name" placeholder="Full name"/>
+          <input type="text" id="w-location" placeholder="Location (e.g. Nairobi, KE)"/>
+          <select id="w-sector">
+            <option value="">Select sector…</option>
+            <option>Agriculture — Tea</option>
+            <option>Agriculture — Coffee</option>
+            <option>Agriculture — Cocoa</option>
+            <option>Textile Manufacturing</option>
+            <option>Construction</option>
+            <option>Mining</option>
+            <option>Domestic Work</option>
+          </select>
+          <button class="btn" onclick="registerWorker()">GENERATE PASSPORT</button>
+        </div>
+        <div class="alert success" id="passport-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3>Log Work Claim</h3>
+        <p style="margin-bottom:14px">Submit today's work for peer verification. Requires auth.</p>
+        <div class="form-col">
+          <input type="number" id="w-hours" placeholder="Hours worked (max 16)" min="1" max="16"/>
+          <input type="text" id="w-task" placeholder="Task description"/>
+          <input type="text" id="w-date" placeholder="Date (YYYY-MM-DD) or leave blank for today"/>
+          <button class="btn secondary" onclick="submitClaim()">SUBMIT CLAIM TO CHAIN</button>
+        </div>
+        <div class="alert" id="claim-alert"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="passport" id="passport-card">
+        <div class="passport-header">
+          <div class="avatar" id="p-avatar">?</div>
+          <div>
+            <div style="font-size:0.95rem;font-weight:700" id="p-name">—</div>
+            <div class="passport-id" id="p-id">ID: NOT GENERATED</div>
+            <div class="passport-id" id="p-loc" style="color:#666">—</div>
+          </div>
+        </div>
+        <div class="badge-row" id="p-badges"><div class="badge blue">TESTNET</div></div>
+        <div class="score-bar"><label><span>Reputation Score</span><span id="rep-val">—</span></label><div class="bar-bg"><div class="bar-fill green" id="rep-bar" style="width:0%"></div></div></div>
+        <div class="score-bar"><label><span>Verification Depth</span><span id="vd-val">—</span></label><div class="bar-bg"><div class="bar-fill blue" id="vd-bar" style="width:0%"></div></div></div>
+        <div class="score-bar"><label><span>Days Worked (On-Chain)</span><span id="ct-val">—</span></label><div class="bar-bg"><div class="bar-fill orange" id="ct-bar" style="width:0%"></div></div></div>
+        <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+          <h3 style="font-size:0.72rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">WORK LOG (ON-CHAIN)</h3>
+          <table class="log-table" id="work-log">
+            <thead><tr><th>DATE</th><th>HOURS</th><th>STATUS</th><th>TX HASH</th></tr></thead>
+            <tbody id="work-log-body"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px">No records yet</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VERIFY ════════════════════════════════════════════════════════════════ -->
+<section id="verify" class="section">
+  <h2>PEER VERIFICATION PROTOCOL</h2>
+  <div class="api-bar"><span>ℹ️</span><span>Proof-of-Human-Work: 3 physically-present peers sign each claim. False verification destroys the verifier's reputation score on-chain.</span></div>
+
+  <div class="verify-flow">
+    <div class="verify-node verified" id="vn0"><div class="icon">📋</div><div style="font-weight:600">CLAIM</div><div style="color:var(--muted)">Submitted</div></div>
+    <div class="verify-arrow" id="va0"></div>
+    <div class="verify-node" id="vn1"><div class="icon">👷</div><div style="font-weight:600">PEER 1</div><div style="color:var(--muted)" id="v1s">Awaiting</div></div>
+    <div class="verify-arrow" id="va1"></div>
+    <div class="verify-node" id="vn2"><div class="icon">👷</div><div style="font-weight:600">PEER 2</div><div style="color:var(--muted)" id="v2s">Awaiting</div></div>
+    <div class="verify-arrow" id="va2"></div>
+    <div class="verify-node" id="vn3"><div class="icon">👷</div><div style="font-weight:600">PEER 3</div><div style="color:var(--muted)" id="v3s">Awaiting</div></div>
+    <div class="verify-arrow" id="va3"></div>
+    <div class="verify-node" id="vn4"><div class="icon">🔒</div><div style="font-weight:600">SEALED</div><div style="color:var(--muted)" id="v4s">Pending</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Simulate Claim Verification</h3>
+      <p style="margin-bottom:14px">Demo the 3-peer consensus flow locally.</p>
+      <div class="form-col" style="margin-bottom:14px">
+        <input type="text" id="sim-worker" placeholder="Worker name (for demo)" value="Amina Korir"/>
+        <input type="number" id="sim-hours" placeholder="Hours claimed" value="8" min="1" max="16"/>
+        <input type="text" id="sim-task" placeholder="Task" value="Tea harvesting — Row 14"/>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="runVerifySim()">▶ RUN SIMULATION</button>
+        <button class="btn secondary" onclick="resetVerify()">RESET</button>
+      </div>
+      <div class="alert" id="verify-alert"></div>
+    </div>
+    <div class="card">
+      <h3>Simulation Log</h3>
+      <div id="verify-log" style="font-family:'Space Mono',monospace;font-size:0.7rem;color:#666;line-height:1.8;min-height:140px">Waiting to start simulation…</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px">
+    <h3 style="margin-bottom:10px;color:var(--muted);font-size:0.72rem;letter-spacing:2px">TRUST NETWORK</h3>
+    <canvas id="net-canvas" height="180"></canvas>
+  </div>
+</section>
+
+<!-- ═══ SUPPLY CHAIN ══════════════════════════════════════════════════════════ -->
+<section id="supplychain" class="section">
+  <h2>SUPPLY CHAIN ORACLE</h2>
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Issue Batch Certificate</h3>
+        <p style="margin-bottom:14px">Cryptographically link a product batch to verified worker records.</p>
+        <div class="form-col">
+          <input type="text" id="sc-brand" placeholder="Brand / Company name"/>
+          <input type="text" id="sc-product" placeholder="Product description"/>
+          <input type="number" id="sc-kg" placeholder="Batch weight (kg)"/>
+          <input type="number" id="sc-wcount" placeholder="Number of workers (demo: uses seeded workers)"/>
+          <button class="btn orange" onclick="issueCert()">GENERATE CERTIFICATE + QR</button>
+        </div>
+        <div class="alert" id="sc-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px">Recent Certifications</h3>
+        <div id="cert-list"><p style="color:var(--muted);font-size:0.75rem">Loading…</p></div>
+      </div>
+    </div>
+
+    <div class="qr-box">
+      <div class="mono" style="color:var(--muted);letter-spacing:2px">BATCH CERTIFICATE</div>
+      <img id="qr-img" src="" alt="QR Code" style="display:none"/>
+      <div id="qr-placeholder" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:#555;padding:40px 0">Generate a certificate to see the QR code</div>
+      <div id="qr-data" style="font-family:'Space Mono',monospace;font-size:0.66rem;color:#888;margin-top:8px;line-height:1.6"></div>
+      <div id="qr-badges" class="badge-row" style="justify-content:center;margin-top:10px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINANCE ═══════════════════════════════════════════════════════════════ -->
+<section id="finance" class="section">
+  <h2>LABOR AS COLLATERAL</h2>
+  <div class="api-bar"><span>💡</span><span>On-chain work history replaces bank statements. No credit score. No bank account. Just verified labor — owned by the worker forever.</span></div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Credit Score Calculator</h3>
+        <p style="margin-bottom:14px">Estimate creditworthiness from on-chain labor data.</p>
+        <div class="form-col">
+          <input type="number" id="f-months" placeholder="Months of on-chain work"/>
+          <input type="number" id="f-peers" placeholder="Avg verifiers per claim"/>
+          <input type="number" id="f-hrs" placeholder="Avg hours per week"/>
+          <button class="btn" onclick="calcCredit()">GENERATE CREDIT REPORT</button>
+        </div>
+        <div class="alert" id="finance-alert"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">Income Consistency (Simulated)</h3>
+        <div class="chart-wrap" id="income-chart"></div>
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--muted);margin-top:5px;padding:0 2px">
+          <span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span><span>JUN</span><span>JUL</span><span>AUG</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:18px">Labor Credit Report</h3>
+      <div id="credit-report">
+        <div style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);text-align:center;padding:36px 0">Run the calculator to generate your report</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AI MONITOR ════════════════════════════════════════════════════════════ -->
+<section id="ai" class="section">
+  <h2>AI ANOMALY DETECTION</h2>
+  <p style="margin-bottom:22px;max-width:580px">The AI layer monitors verification patterns for collusion. Groups verifying unrealistic hours are flagged for random spot-checks — keeping it honest without centralized control.</p>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="margin-bottom:14px">Configure Scan</h3>
+        <div class="form-col" style="margin-bottom:14px">
+          <select id="ai-region">
+            <option value="">All Regions</option>
+            <option>Kericho, KE</option>
+            <option>Oromia, ET</option>
+            <option>Ashanti, GH</option>
+            <option>Dhaka, BD</option>
+          </select>
+          <select id="ai-type">
+            <option value="">All Anomaly Types</option>
+            <option>impossible_hours</option>
+            <option>clique_collusion</option>
+            <option>gps_mismatch</option>
+            <option>timestamp_cluster</option>
+          </select>
+        </div>
+        <button class="btn" onclick="runAIScan()" id="ai-scan-btn">RUN AI SCAN</button>
+        <div class="alert" id="ai-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px">Model Performance</h3>
+        <div class="score-bar"><label><span>Precision</span><span>94.2%</span></label><div class="bar-bg"><div class="bar-fill green" style="width:94%"></div></div></div>
+        <div class="score-bar"><label><span>Recall</span><span>88.7%</span></label><div class="bar-bg"><div class="bar-fill blue" style="width:89%"></div></div></div>
+        <div class="score-bar"><label><span>False Positive Rate</span><span>3.1%</span></label><div class="bar-bg"><div class="bar-fill orange" style="width:3%"></div></div></div>
+        <p style="margin-top:10px;font-size:0.72rem">Trained on <strong style="color:var(--text)">12,400</strong> synthetic records. Escalation at risk score &gt; 0.72.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:14px">Detection Results</h3>
+      <div id="ai-results">
+        <div style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);text-align:center;padding:36px 0">Run a scan to see results</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WORKERS ════════════════════════════════════════════════════════════════ -->
+<section id="workers" class="section">
+  <h2>WORKER REGISTRY</h2>
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <input type="text" id="worker-search" placeholder="Search by name or location…" style="max-width:300px" oninput="filterWorkers()"/>
+    <span style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);align-self:center" id="worker-count">Loading…</span>
+  </div>
+  <div class="card">
+    <div class="workers-list" id="workers-list">
+      <p style="color:var(--muted);font-family:'Space Mono',monospace;font-size:0.75rem;padding:20px">Loading workers…</p>
+    </div>
+  </div>
+
+  <div id="worker-detail" style="display:none;margin-top:16px">
+    <h2 style="margin-bottom:14px">WORKER DETAIL</h2>
+    <div class="grid-2">
+      <div class="passport" id="wd-passport">
+        <div class="passport-header">
+          <div class="avatar" id="wd-avatar">?</div>
+          <div>
+            <div style="font-size:0.95rem;font-weight:700" id="wd-name">—</div>
+            <div class="passport-id" id="wd-id">—</div>
+            <div class="passport-id" id="wd-loc" style="color:#666">—</div>
+          </div>
+        </div>
+        <div class="badge-row" id="wd-badges"></div>
+        <div class="score-bar"><label><span>Reputation</span><span id="wd-rep">—</span></label><div class="bar-bg"><div class="bar-fill green" id="wd-rep-bar" style="width:0%"></div></div></div>
+        <div class="score-bar"><label><span>Verification Depth</span><span id="wd-vd">—</span></label><div class="bar-bg"><div class="bar-fill blue" id="wd-vd-bar" style="width:0%"></div></div></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">Recent Claims</h3>
+        <table class="log-table">
+          <thead><tr><th>DATE</th><th>HOURS</th><th>TASK</th><th>STATUS</th></tr></thead>
+          <tbody id="wd-claims"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════════ -->
+<script>
+const API = 'http://localhost:3001';
+let authToken = localStorage.getItem('pow_token') || null;
+let currentWorkerId = localStorage.getItem('pow_worker_id') || null;
+let allWorkers = [];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function showAlert(id, msg, type) {
+  const el = $(id); if (!el) return;
+  if (!msg) { el.classList.remove('show'); return; }
+  el.textContent = msg; el.className = `alert ${type} show`;
+}
+async function apiFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const r = await fetch(API + path, { ...opts, headers: { ...headers, ...(opts.headers||{}) } });
+  return r.json();
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function goto(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  $(id).classList.add('active');
+  const idx = ['home','passport','verify','supplychain','finance','ai','workers'].indexOf(id);
+  document.querySelectorAll('nav button')[idx].classList.add('active');
+  if (id === 'verify') drawNet();
+  if (id === 'finance') drawIncomeChart();
+  if (id === 'supplychain') loadCerts();
+  if (id === 'workers') loadWorkers();
+  if (id === 'passport' && currentWorkerId) loadMyPassport();
+}
+
+// ── API STATUS ────────────────────────────────────────────────────────────────
+async function checkAPI() {
+  try {
+    const data = await apiFetch('/api/stats');
+    $('s-workers').textContent = data.totalWorkers?.toLocaleString() || '—';
+    $('s-verifs').textContent = data.totalVerifs?.toLocaleString() || '—';
+    $('s-certs').textContent = data.totalCerts?.toLocaleString() || '—';
+    $('s-blocks').textContent = data.blockNumber?.toLocaleString() || '—';
+    $('api-dot').classList.remove('offline');
+    $('api-dot').title = 'API Online';
+    updateTicker(data);
+  } catch {
+    $('api-dot').classList.add('offline');
+    $('api-dot').title = 'API Offline — Run: node backend/server.js';
+  }
+}
+
+function updateTicker(d) {
+  const t = `<span>✓</span> WORKERS: ${d.totalWorkers} &nbsp;|&nbsp; <span>✓</span> VERIFIED CLAIMS: ${d.verifiedClaims} &nbsp;|&nbsp; <span>✓</span> VERIFICATIONS: ${d.totalVerifs} &nbsp;|&nbsp; <span>⬡</span> BLOCK: ${d.blockNumber} &nbsp;|&nbsp; <span>⚠</span> OPEN FLAGS: ${d.openFlags} &nbsp;|&nbsp; `;
+  $('ticker').innerHTML = t + t;
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function updateAuthBar() {
+  if (authToken && currentWorkerId) {
+    $('auth-status-text').innerHTML = `<span style="color:var(--accent)">✓ Authenticated</span> — Worker ID: <span class="hash">${currentWorkerId.slice(0,12)}…</span>`;
+    $('logout-btn').style.display = 'block';
+  } else {
+    $('auth-status-text').textContent = 'Not logged in. Register below.';
+    $('logout-btn').style.display = 'none';
+  }
+}
+function logout() {
+  authToken = null; currentWorkerId = null;
+  localStorage.removeItem('pow_token'); localStorage.removeItem('pow_worker_id');
+  updateAuthBar();
+  $('p-avatar').textContent = '?'; $('p-name').textContent = '—';
+  $('p-id').textContent = 'ID: NOT GENERATED';
+  $('work-log-body').innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px">No records yet</td></tr>';
+}
+
+// ── PASSPORT ──────────────────────────────────────────────────────────────────
+async function registerWorker() {
+  const name = $('w-name').value.trim();
+  const location = $('w-location').value.trim();
+  const sector = $('w-sector').value;
+  if (!name || !location || !sector) { showAlert('passport-alert','Fill in all fields.','error'); return; }
+
+  showAlert('passport-alert','<span class="spinner"></span>Generating…','success');
+  try {
+    const data = await apiFetch('/api/workers/register', { method:'POST', body: JSON.stringify({name,location,sector}) });
+    if (data.error) { showAlert('passport-alert', data.error, 'error'); return; }
+
+    authToken = data.token; currentWorkerId = data.worker.id;
+    localStorage.setItem('pow_token', authToken);
+    localStorage.setItem('pow_worker_id', currentWorkerId);
+    updateAuthBar();
+
+    renderPassport(data.worker);
+    showAlert('passport-alert', `✓ Passport created! Wallet: ${data.worker.wallet_address.slice(0,20)}… (Save your private key: ${data.privateKey.slice(0,12)}…)`, 'success');
+    checkAPI();
+  } catch { showAlert('passport-alert','API offline. Start the backend first.','error'); }
+}
+
+function renderPassport(w) {
+  $('p-avatar').textContent = w.name[0].toUpperCase();
+  $('p-name').textContent = w.name;
+  $('p-id').textContent = 'ID: ' + w.id;
+  $('p-loc').textContent = (w.location||'') + ' · ' + (w.sector||'');
+  $('p-badges').innerHTML = `<div class="badge green">VERIFIED</div><div class="badge blue">${(w.sector||'').split('—')[0].trim().toUpperCase()}</div><div class="badge orange">TESTNET</div>`;
+  const rep = Math.round(w.reputation_score || 50);
+  const vd = Math.min(100, (w.verification_depth || 0) * 2);
+  const ct = Math.min(100, (w.total_days_worked || 0));
+  animBar('rep-bar','rep-val', rep, '%');
+  animBar('vd-bar','vd-val', vd, '%');
+  animBar('ct-bar','ct-val', ct, ' days');
+}
+
+function animBar(barId, valId, val, suffix) {
+  $(barId).style.width = '0%';
+  setTimeout(() => {
+    $(barId).style.width = val + '%';
+    let c = 0;
+    const iv = setInterval(() => { c = Math.min(c+2, val); $(valId).textContent = c + suffix; if(c>=val) clearInterval(iv); }, 18);
+  }, 100);
+}
+
+async function loadMyPassport() {
+  if (!currentWorkerId) return;
+  try {
+    const data = await apiFetch('/api/workers/' + currentWorkerId);
+    if (data.worker) {
+      renderPassport(data.worker);
+      const tbody = $('work-log-body');
+      if (data.claims?.length) {
+        tbody.innerHTML = data.claims.slice(0,8).map(c => `
+          <tr>
+            <td>${c.date}</td>
+            <td>${c.hours}h</td>
+            <td><span class="tag ${c.status==='verified'?'ok':'warn'}">${c.status.toUpperCase()}</span></td>
+            <td class="hash">${c.tx_hash ? c.tx_hash.slice(0,14)+'…' : '—'}</td>
+          </tr>`).join('');
+      }
+    }
+  } catch {}
+}
+
+async function submitClaim() {
+  if (!authToken) { showAlert('claim-alert','Register first.','error'); return; }
+  const hours = +$('w-hours').value;
+  const task = $('w-task').value.trim();
+  const date = $('w-date').value.trim() || undefined;
+  if (!hours || !task) { showAlert('claim-alert','Fill in hours and task.','error'); return; }
+
+  showAlert('claim-alert','<span class="spinner"></span>Submitting to chain…','success');
+  try {
+    const data = await apiFetch('/api/claims', { method:'POST', body: JSON.stringify({hours, task, date}) });
+    if (data.error) { showAlert('claim-alert', data.error, 'error'); return; }
+    const anom = data.claim.anomaly_score > 0.5 ? ` ⚠ Anomaly score: ${data.claim.anomaly_score.toFixed(2)}` : '';
+    showAlert('claim-alert', `✓ Claim submitted! ID: ${data.claim.id.slice(0,14)}… Awaiting 3 peer verifications.${anom}`, data.claim.anomaly_score > 0.5 ? 'warn' : 'success');
+    loadMyPassport();
+  } catch { showAlert('claim-alert','API offline.','error'); }
+}
+
+// ── VERIFY SIMULATION ─────────────────────────────────────────────────────────
+let verifRunning = false;
+function resetVerify() {
+  verifRunning = false;
+  [1,2,3].forEach(i => {
+    const n = $('vn'+i); n.classList.remove('verified','pending');
+    $('v'+i+'s').textContent = 'Awaiting';
+    $('va'+(i-1)).classList.remove('active');
+  });
+  $('vn4').classList.remove('verified'); $('v4s').textContent = 'Pending';
+  $('va3').classList.remove('active');
+  $('verify-log').innerHTML = 'Waiting to start simulation…';
+  showAlert('verify-alert','','success');
+}
+
+function runVerifySim() {
+  if (verifRunning) return;
+  verifRunning = true;
+  const worker = $('sim-worker').value || 'Amina Korir';
+  const hrs = $('sim-hours').value || 8;
+  const task = $('sim-task').value || 'Tea harvesting';
+  const log = $('verify-log');
+  log.innerHTML = '';
+  const add = (msg, c) => {
+    const ts = new Date().toLocaleTimeString();
+    log.innerHTML += `<div style="color:${c||'#777'}">[${ts}] ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  };
+  add(`Claim received: ${worker} — ${hrs}h, "${task}"`);
+  add('Initiating Proof-of-Human-Work consensus (requires 3 peers)…');
+
+  const peers = [
+    {name:'Joseph O.', id:'0x4c1d…a3f1', dist:12},
+    {name:'Fatuma W.', id:'0x9b22…e7c0', dist:8},
+    {name:'Kibeti M.', id:'0x2e8a…c44f', dist:22},
+  ];
+  peers.forEach((p, idx) => {
+    const base = (idx+1)*1800;
+    $('vn'+(idx+1)).classList.add('pending');
+    $('v'+(idx+1)+'s').textContent = 'Signing…';
+    setTimeout(() => {
+      add(`✓ ${p.name} (${p.id}) signed — GPS: ${p.dist}m away`, 'var(--accent)');
+      $('vn'+(idx+1)).classList.remove('pending');
+      $('vn'+(idx+1)).classList.add('verified');
+      $('v'+(idx+1)+'s').textContent = 'Signed ✓';
+      $('va'+idx).classList.add('active');
+      if (idx === 2) {
+        setTimeout(() => {
+          add('3/3 signatures collected. Sealing to IPFS + blockchain…', 'var(--accent3)');
+          const txHash = '0x' + [...Array(16)].map(()=>Math.floor(Math.random()*16).toString(16)).join('');
+          add(`Block confirmed. TX: ${txHash}`, 'var(--accent)');
+          $('vn4').classList.add('verified'); $('v4s').textContent = 'On-chain ✓';
+          $('va3').classList.add('active');
+          showAlert('verify-alert', `✓ Claim sealed! TX: ${txHash}`, 'success');
+          verifRunning = false;
+        }, 900);
+      }
+    }, base);
+  });
+}
+
+// ── TRUST NETWORK ─────────────────────────────────────────────────────────────
+function drawNet() {
+  const canvas = $('net-canvas');
+  const W = canvas.offsetWidth; canvas.width = W; canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  const nodes = [
+    {x:W/2,y:90,r:16,color:'#00ff88',label:'YOU'},
+    ...Array.from({length:9},(_,i)=>({
+      x:W/2+Math.cos(i*Math.PI*2/9)*130, y:90+Math.sin(i*Math.PI*2/9)*60, r:10,
+      color:Math.random()>0.35?'#4fc3f7':'#ff6b35',
+      label:['AM','JO','FA','KI','MO','NA','AB','TI','KO'][i]
+    }))
+  ];
+  ctx.clearRect(0,0,W,180);
+  nodes.slice(1).forEach(n=>{
+    ctx.strokeStyle='rgba(0,255,136,0.12)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(W/2,90); ctx.lineTo(n.x,n.y); ctx.stroke();
+  });
+  nodes.forEach(n=>{
+    ctx.shadowColor=n.color; ctx.shadowBlur=10;
+    ctx.fillStyle=n.color; ctx.beginPath();
+    ctx.arc(n.x,n.y,n.r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle='#000';
+    ctx.font='bold 7px Space Mono,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n.label,n.x,n.y);
+  });
+}
+
+// ── SUPPLY CHAIN ──────────────────────────────────────────────────────────────
+async function loadCerts() {
+  try {
+    const data = await apiFetch('/api/supplychain/certs');
+    const list = $('cert-list');
+    if (!data.certs?.length) { list.innerHTML = '<p style="color:var(--muted);font-size:0.75rem">No certs yet.</p>'; return; }
+    list.innerHTML = `<table class="log-table">
+      <thead><tr><th>BRAND</th><th>PRODUCT</th><th>WORKERS</th><th>STATUS</th></tr></thead>
+      <tbody>${data.certs.map(c=>`<tr>
+        <td>${c.brand}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.product}</td>
+        <td>${c.worker_count}</td>
+        <td><span class="tag ${c.status==='certified'?'ok':'warn'}">${c.status.toUpperCase()}</span></td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch {}
+}
+
+async function issueCert() {
+  const brand = $('sc-brand').value.trim();
+  const product = $('sc-product').value.trim();
+  const kg = +$('sc-kg').value;
+  const wcount = +$('sc-wcount').value || 3;
+  if (!brand || !product) { showAlert('sc-alert','Fill in brand and product.','error'); return; }
+
+  showAlert('sc-alert','<span class="spinner"></span>Issuing certificate…','success');
+  // Use seeded worker IDs for demo — fetch from API
+  try {
+    const wdata = await apiFetch('/api/workers?limit='+wcount);
+    const workerIds = wdata.workers?.map(w=>w.id) || [];
+    if (!workerIds.length) { showAlert('sc-alert','No workers found. Run seed script first.','error'); return; }
+
+    const data = await apiFetch('/api/supplychain/certify', {
+      method:'POST',
+      body: JSON.stringify({brand, product, batch_weight_kg: kg||null, worker_ids: workerIds})
+    });
+    if (data.error) { showAlert('sc-alert', data.error, 'error'); return; }
+
+    // Show QR
+    if (data.qr_code) {
+      $('qr-img').src = data.qr_code;
+      $('qr-img').style.display = 'block';
+      $('qr-placeholder').style.display = 'none';
+    }
+    $('qr-data').innerHTML = `<strong style="color:var(--accent)">${data.cert_id?.slice(0,16)}…</strong><br>${brand} · ${product}<br>Workers: ${data.worker_count} · ${kg||'?'}kg<br>IPFS: ${data.ipfs_hash?.slice(0,20)}…`;
+    $('qr-badges').innerHTML = `<div class="badge green">VERIFIED LABOR</div><div class="badge blue">${data.worker_count} WORKERS</div>`;
+    showAlert('sc-alert', `✓ Certificate issued! Hash: ${data.cert_hash?.slice(0,20)}…`, 'success');
+    loadCerts();
+  } catch { showAlert('sc-alert','API offline or seed data missing.','error'); }
+}
+
+// ── FINANCE ───────────────────────────────────────────────────────────────────
+function drawIncomeChart() {
+  const data = [72,68,80,75,85,78,90,88];
+  const chart = $('income-chart');
+  chart.innerHTML = '';
+  data.forEach((v,i) => {
+    const col = document.createElement('div'); col.className='bar-col';
+    const b = document.createElement('div'); b.className='b';
+    b.style.background='var(--accent)'; b.style.opacity='0.7'; b.style.height='0px';
+    col.appendChild(b); chart.appendChild(col);
+    setTimeout(()=>{ b.style.transition='height 0.7s ease'; b.style.height=(v*1.2)+'px'; }, i*80);
+  });
+}
+
+function calcCredit() {
+  const months = +$('f-months').value||0;
+  const peers = +$('f-peers').value||0;
+  const hrs = +$('f-hrs').value||0;
+  if (!months||!peers||!hrs) { showAlert('finance-alert','Fill in all fields.','error'); return; }
+
+  const score = Math.min(850, Math.round((months*4.5)+(Math.min(peers,10)*15)+(Math.min(hrs,40)*2.5)+300));
+  const tier = score>720?'PRIME':score>580?'STANDARD':'EMERGING';
+  const tierColor = score>720?'var(--accent)':score>580?'var(--accent3)':'var(--warning)';
+  const maxLoan = (score*months*2.8).toLocaleString('en-US',{maximumFractionDigits:0});
+
+  $('credit-report').innerHTML = `
+    <div style="text-align:center;padding:18px 0;border-bottom:1px solid var(--border);margin-bottom:18px">
+      <div class="credit-big" style="color:${tierColor}">${score}</div>
+      <div class="mono" style="color:var(--muted);letter-spacing:2px;margin-top:4px">LABOR CREDIT SCORE</div>
+      <div class="badge" style="display:inline-block;margin-top:8px;background:rgba(0,255,136,0.1);color:${tierColor};border:1px solid ${tierColor}">${tier} TIER</div>
+    </div>
+    <div class="mono" style="line-height:2.2">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">ON-CHAIN TENURE</span><span>${months} months</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">AVG PEER DEPTH</span><span>${peers} verifiers</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">WEEKLY HOURS</span><span>${hrs} hrs</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span style="color:var(--muted)">MAX LOAN ESTIMATE</span><span style="color:var(--accent)">$${maxLoan}</span></div>
+    </div>
+    <div class="alert success show" style="margin-top:14px">✓ Generated. No bank account required.</div>
+  `;
+}
+
+// ── AI SCAN ───────────────────────────────────────────────────────────────────
+async function runAIScan() {
+  const region = $('ai-region').value;
+  const anomaly_type = $('ai-type').value;
+  $('ai-scan-btn').disabled = true;
+  showAlert('ai-alert','<span class="spinner"></span>Scanning…','warn');
+
+  try {
+    const data = await apiFetch('/api/ai/scan', { method:'POST', body: JSON.stringify({region, anomaly_type}) });
+    const res = $('ai-results');
+
+    if (!data.flags?.length) {
+      res.innerHTML = '<div class="anomaly-item low"><div class="anomaly-icon">✅</div><div class="anomaly-info"><strong>No anomalies detected</strong><span>All patterns within normal range</span></div></div>';
+    } else {
+      res.innerHTML = `<div class="mono" style="color:var(--muted);margin-bottom:12px">Found ${data.summary.high} high / ${data.summary.medium} medium / ${data.summary.low} low risk</div>`;
+      data.flags.forEach((f, i) => {
+        setTimeout(() => {
+          const div = document.createElement('div');
+          const riskClass = f.risk === 'high' ? 'high' : f.risk === 'medium' ? 'medium' : 'low';
+          div.className = `anomaly-item ${riskClass}`;
+          div.innerHTML = `
+            <div class="anomaly-icon">${f.risk==='high'?'🚨':f.risk==='medium'?'⚠️':'✅'}</div>
+            <div class="anomaly-info">
+              <strong>${f.label||f.type}</strong>
+              <span>${f.detail||''}</span>
+            </div>
+            <span class="risk-pill ${riskClass}">RISK ${parseFloat(f.score).toFixed(2)}</span>`;
+          res.appendChild(div);
+        }, i * 200);
+      });
+    }
+
+    const h = data.summary?.high || 0;
+    showAlert('ai-alert', `Scan complete — ${h} high-risk pattern${h!==1?'s':''} flagged for spot-check.`, h>0?'warn':'success');
+  } catch {
+    showAlert('ai-alert', 'API offline.', 'error');
+  }
+  $('ai-scan-btn').disabled = false;
+}
+
+// ── WORKERS ───────────────────────────────────────────────────────────────────
+async function loadWorkers() {
+  try {
+    const data = await apiFetch('/api/workers?limit=50');
+    allWorkers = data.workers || [];
+    $('worker-count').textContent = `${allWorkers.length} / ${data.total} workers`;
+    renderWorkerList(allWorkers);
+  } catch {
+    $('workers-list').innerHTML = '<p style="color:var(--danger);font-family:\'Space Mono\',monospace;font-size:0.72rem;padding:20px">API offline. Start the backend first.</p>';
+  }
+}
+
+function renderWorkerList(workers) {
+  const list = $('workers-list');
+  if (!workers.length) { list.innerHTML = '<p style="color:var(--muted);font-family:\'Space Mono\',monospace;font-size:0.75rem;padding:20px">No workers found.</p>'; return; }
+  list.innerHTML = workers.map(w => `
+    <div class="worker-row" onclick="showWorkerDetail('${w.id}')">
+      <div class="worker-avatar">${w.name[0]}</div>
+      <div class="worker-info">
+        <strong>${w.name}</strong>
+        <small>${w.location} · ${w.sector}</small>
+      </div>
+      <div class="rep-badge">${Math.round(w.reputation_score||50)}% rep · ${w.total_days_worked||0}d</div>
+    </div>`).join('');
+}
+
+function filterWorkers() {
+  const q = $('worker-search').value.toLowerCase();
+  renderWorkerList(allWorkers.filter(w => w.name.toLowerCase().includes(q) || (w.location||'').toLowerCase().includes(q)));
+}
+
+async function showWorkerDetail(id) {
+  $('worker-detail').style.display = 'block';
+  $('worker-detail').scrollIntoView({ behavior:'smooth' });
+  try {
+    const data = await apiFetch('/api/workers/' + id);
+    const w = data.worker;
+    $('wd-avatar').textContent = w.name[0];
+    $('wd-name').textContent = w.name;
+    $('wd-id').textContent = 'ID: ' + w.id;
+    $('wd-loc').textContent = w.location + ' · ' + w.sector;
+    $('wd-badges').innerHTML = `<div class="badge green">VERIFIED</div><div class="badge blue">${(w.sector||'').split('—')[0].trim().toUpperCase()}</div>`;
+    const rep = Math.round(w.reputation_score||50);
+    $('wd-rep').textContent = rep + '%';
+    $('wd-rep-bar').style.width = rep + '%';
+    const vd = Math.min(100, (w.verification_depth||0)*2);
+    $('wd-vd').textContent = vd + '%';
+    $('wd-vd-bar').style.width = vd + '%';
+    $('wd-claims').innerHTML = (data.claims||[]).slice(0,6).map(c=>`
+      <tr><td>${c.date}</td><td>${c.hours}h</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.task}</td>
+      <td><span class="tag ${c.status==='verified'?'ok':'warn'}">${c.status.toUpperCase()}</span></td></tr>`).join('');
+  } catch {}
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+updateAuthBar();
+checkAPI();
+setInterval(checkAPI, 15000);
+drawIncomeChart();
+</script>
+</body>
+</html>

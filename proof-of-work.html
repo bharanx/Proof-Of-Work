@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProofOfWork — Global Labor Protocol</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #00ff88;
+    --accent2: #ff6b35;
+    --accent3: #4fc3f7;
+    --text: #e8e8e0;
+    --muted: #555;
+    --danger: #ff4444;
+    --warning: #ffb800;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BACKGROUND GRID */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .logo span { color: var(--text); }
+  nav .nav-tabs { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    font-family: 'Space Mono', monospace; font-size: 0.7rem;
+    padding: 6px 12px; cursor: pointer; border-radius: 4px;
+    transition: all 0.2s; letter-spacing: 1px;
+  }
+  nav button:hover, nav button.active {
+    color: var(--accent); background: rgba(0,255,136,0.08);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* MAIN */
+  main { position: relative; z-index: 1; }
+
+  /* SECTIONS */
+  .section { display: none; padding: 32px 28px; max-width: 1100px; margin: 0 auto; }
+  .section.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; line-height: 1.1; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+  p { color: #aaa; font-size: 0.9rem; line-height: 1.6; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .card:hover { border-color: #333; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+
+  @media(max-width:700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    nav .nav-tabs { flex-wrap: wrap; }
+  }
+
+  /* HERO */
+  .hero { padding: 60px 28px 40px; max-width: 1100px; margin: 0 auto; }
+  .hero-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+  .hero h1 { margin-bottom: 16px; }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { font-size: 1rem; max-width: 560px; margin-bottom: 32px; }
+
+  .stats-row { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 32px; }
+  .stat { }
+  .stat .num {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.6rem; color: var(--accent); display: block;
+  }
+  .stat .lbl { font-size: 0.75rem; color: var(--muted); letter-spacing: 1px; }
+
+  /* WORKER PASSPORT */
+  .passport {
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 24px;
+    background: linear-gradient(135deg, #0d1a14, #0a0a0a);
+    position: relative;
+    overflow: hidden;
+  }
+  .passport::before {
+    content: 'PROOF OF WORK';
+    position: absolute; top: 12px; right: 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem; color: rgba(0,255,136,0.2);
+    letter-spacing: 3px;
+  }
+  .passport-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 800; color: #000;
+    flex-shrink: 0;
+  }
+  .passport-id { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem; padding: 4px 10px;
+    border-radius: 20px; letter-spacing: 1px;
+  }
+  .badge.green { background: rgba(0,255,136,0.1); color: var(--accent); border: 1px solid rgba(0,255,136,0.3); }
+  .badge.blue { background: rgba(79,195,247,0.1); color: var(--accent3); border: 1px solid rgba(79,195,247,0.3); }
+  .badge.orange { background: rgba(255,107,53,0.1); color: var(--accent2); border: 1px solid rgba(255,107,53,0.3); }
+
+  .score-bar { margin: 8px 0; }
+  .score-bar label { font-size: 0.75rem; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .bar-bg { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+  .bar-fill.green { background: var(--accent); }
+  .bar-fill.blue { background: var(--accent3); }
+  .bar-fill.orange { background: var(--accent2); }
+
+  /* VERIFICATION FLOW */
+  .verify-flow { display: flex; align-items: center; gap: 0; margin: 24px 0; overflow-x: auto; }
+  .verify-node {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 110px; padding: 16px 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; text-align: center; font-size: 0.75rem;
+    transition: all 0.3s;
+  }
+  .verify-node.verified { border-color: var(--accent); background: rgba(0,255,136,0.05); }
+  .verify-node.pending { border-color: var(--warning); background: rgba(255,184,0,0.05); }
+  .verify-node .icon { font-size: 1.5rem; margin-bottom: 6px; }
+  .verify-arrow {
+    flex: 1; height: 2px; min-width: 20px;
+    background: var(--border); position: relative;
+  }
+  .verify-arrow.active { background: var(--accent); }
+  .verify-arrow::after {
+    content: '▶'; position: absolute; right: -8px; top: -8px;
+    font-size: 0.6rem; color: inherit;
+  }
+
+  /* LOG TABLE */
+  .log-table { width: 100%; border-collapse: collapse; font-family: 'Space Mono', monospace; font-size: 0.72rem; }
+  .log-table th { color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); letter-spacing: 1px; }
+  .log-table td { padding: 10px 12px; border-bottom: 1px solid #1a1a1a; color: #bbb; }
+  .log-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .hash { color: var(--accent3); font-size: 0.65rem; }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 0.6rem; letter-spacing: 1px;
+  }
+  .tag.ok { background: rgba(0,255,136,0.15); color: var(--accent); }
+  .tag.warn { background: rgba(255,184,0,0.15); color: var(--warning); }
+  .tag.err { background: rgba(255,68,68,0.15); color: var(--danger); }
+
+  /* QR */
+  .qr-box {
+    border: 2px solid var(--accent2); border-radius: 8px;
+    padding: 20px; text-align: center; background: rgba(255,107,53,0.04);
+  }
+  .qr-svg { margin: 16px auto; display: block; }
+
+  /* CHART */
+  .chart-wrap { height: 160px; display: flex; align-items: flex-end; gap: 6px; padding: 16px 0 0; border-bottom: 1px solid var(--border); }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar-col .b { width: 100%; border-radius: 3px 3px 0 0; transition: height 0.8s ease; min-height: 4px; }
+  .bar-col .bl { font-size: 0.6rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+  /* INPUT */
+  .input-row { display: flex; gap: 10px; margin-top: 16px; }
+  input[type=text], input[type=number], select {
+    background: #0f0f0f; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.8rem;
+    padding: 10px 14px; border-radius: 6px; flex: 1; outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: #111; }
+
+  button.btn {
+    background: var(--accent); color: #000;
+    border: none; padding: 10px 20px;
+    font-family: 'Space Mono', monospace; font-size: 0.75rem;
+    font-weight: 700; letter-spacing: 1px;
+    border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  button.btn:hover { background: #00e07a; transform: translateY(-1px); }
+  button.btn.secondary {
+    background: none; color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  button.btn.secondary:hover { background: rgba(0,255,136,0.08); transform: none; }
+  button.btn.orange { background: var(--accent2); }
+  button.btn.orange:hover { background: #ff8050; }
+
+  .alert {
+    padding: 12px 16px; border-radius: 6px; font-size: 0.82rem;
+    margin: 12px 0; display: none;
+    font-family: 'Space Mono', monospace;
+  }
+  .alert.success { background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: var(--accent); }
+  .alert.error { background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: var(--danger); }
+  .alert.warn { background: rgba(255,184,0,0.1); border: 1px solid rgba(255,184,0,0.3); color: var(--warning); }
+  .alert.show { display: block; animation: fadeIn 0.3s; }
+
+  /* ANOMALY */
+  .anomaly-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    border-radius: 6px; margin-bottom: 8px;
+  }
+  .anomaly-item.ok { background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.15); }
+  .anomaly-item.warn { background: rgba(255,184,0,0.05); border: 1px solid rgba(255,184,0,0.15); }
+  .anomaly-item.err { background: rgba(255,68,68,0.05); border: 1px solid rgba(255,68,68,0.15); }
+  .anomaly-icon { font-size: 1.2rem; }
+  .anomaly-info { flex: 1; }
+  .anomaly-info strong { font-size: 0.85rem; display: block; }
+  .anomaly-info span { font-size: 0.75rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .risk-pill {
+    font-size: 0.65rem; padding: 3px 10px;
+    border-radius: 10px; font-family: 'Space Mono', monospace;
+    letter-spacing: 1px;
+  }
+  .risk-pill.low { background: rgba(0,255,136,0.15); color: var(--accent); }
+  .risk-pill.med { background: rgba(255,184,0,0.15); color: var(--warning); }
+  .risk-pill.high { background: rgba(255,68,68,0.15); color: var(--danger); }
+
+  /* NETWORK VIZ */
+  canvas { display: block; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); width: 100%; }
+
+  /* TICKER */
+  .ticker-wrap { overflow: hidden; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 8px 0; margin-bottom: 32px; }
+  .ticker {
+    display: flex; gap: 60px; white-space: nowrap;
+    font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    color: var(--muted); letter-spacing: 1px;
+    animation: ticker 20s linear infinite;
+  }
+  @keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .ticker span { color: var(--accent); }
+
+  /* TOOLTIP */
+  .tooltip { position: relative; display: inline-block; }
+  .tooltip .tip {
+    display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+    background: #1a1a1a; border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: 4px;
+    font-size: 0.7rem; white-space: nowrap; color: var(--text);
+    font-family: 'Space Mono', monospace; z-index: 999;
+  }
+  .tooltip:hover .tip { display: block; }
+
+  /* CREDIT METER */
+  .credit-info {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+    font-family: 'Space Mono', monospace; font-size: 0.75rem;
+  }
+  .credit-info .icon { font-size: 1.2rem; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">PROOF<span>OF</span>WORK</div>
+  <div class="nav-tabs">
+    <button class="active" onclick="goto('home')">HOME</button>
+    <button onclick="goto('passport')">PASSPORT</button>
+    <button onclick="goto('verify')">VERIFY</button>
+    <button onclick="goto('supplychain')">SUPPLY CHAIN</button>
+    <button onclick="goto('finance')">FINANCE</button>
+    <button onclick="goto('ai')">AI MONITOR</button>
+  </div>
+  <div class="status-dot tooltip"><span class="tip">Testnet Live</span></div>
+</nav>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span>✓</span> BLOCK #48291 SEALED &nbsp;|&nbsp; <span>3</span> VERIFICATIONS PENDING &nbsp;|&nbsp; <span>142</span> WORKERS ACTIVE TODAY &nbsp;|&nbsp; TESTNET MODE &nbsp;|&nbsp; IPFS NODES: <span>7</span> &nbsp;|&nbsp;
+    <span>✓</span> BLOCK #48291 SEALED &nbsp;|&nbsp; <span>3</span> VERIFICATIONS PENDING &nbsp;|&nbsp; <span>142</span> WORKERS ACTIVE TODAY &nbsp;|&nbsp; TESTNET MODE &nbsp;|&nbsp; IPFS NODES: <span>7</span> &nbsp;|&nbsp;
+  </div>
+</div>
+
+<!-- HOME -->
+<section id="home" class="section active">
+  <div class="hero" style="padding-top:0">
+    <div class="hero-tag">GLOBAL LABOR PROTOCOL v0.1 — TESTNET</div>
+    <h1>The world's first<br><em>verifiable work record</em><br>owned by the worker.</h1>
+    <p>A blockchain protocol where workers collectively verify each other's labor — creating tamper-proof records that no employer, government, or bank can dispute.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn" onclick="goto('passport')">CREATE WORK PASSPORT</button>
+      <button class="btn secondary" onclick="goto('verify')">SIMULATE PEER VERIFY</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><span class="num" id="cnt-workers">2,847</span><span class="lbl">WORKERS ONCHAIN</span></div>
+      <div class="stat"><span class="num" id="cnt-verif">14,293</span><span class="lbl">VERIFICATIONS DONE</span></div>
+      <div class="stat"><span class="num" id="cnt-brands">38</span><span class="lbl">BRANDS PLUGGED IN</span></div>
+      <div class="stat"><span class="num" id="cnt-blocks">48,291</span><span class="lbl">BLOCKS SEALED</span></div>
+    </div>
+  </div>
+
+  <div style="max-width:1100px;margin:0 auto;padding:0 0 40px">
+    <h2>HOW IT WORKS</h2>
+    <div class="grid-3">
+      <div class="card">
+        <div style="font-size:1.8rem;margin-bottom:10px">🪪</div>
+        <h3>1. Worker Passport</h3>
+        <p>Each worker generates a cryptographic identity. Work claims are peer-verified by 3 physically-present co-workers — creating a web of trust no single actor can corrupt.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.8rem;margin-bottom:10px">🔗</div>
+        <h3>2. Supply Chain Oracle</h3>
+        <p>Brands plug into the protocol. Every product batch is linked to verified labor data — cryptographically signed by worker collectives, not PR departments.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.8rem;margin-bottom:10px">💳</div>
+        <h3>3. Labor as Collateral</h3>
+        <p>On-chain work history unlocks global capital for the unbanked. No bank statements. No credit scores. Just verifiable labor — owned by the worker forever.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PASSPORT -->
+<section id="passport" class="section">
+  <h2>WORKER PASSPORT</h2>
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Register New Worker</h3>
+        <p style="margin-bottom:16px">Generate your cryptographic work identity on the testnet.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="w-name" placeholder="Full name" />
+          <input type="text" id="w-location" placeholder="Location (e.g. Nairobi, KE)" />
+          <select id="w-sector">
+            <option value="">Select sector...</option>
+            <option>Agriculture — Tea</option>
+            <option>Agriculture — Coffee</option>
+            <option>Agriculture — Cocoa</option>
+            <option>Textile Manufacturing</option>
+            <option>Construction</option>
+            <option>Mining</option>
+            <option>Domestic Work</option>
+          </select>
+          <button class="btn" onclick="createPassport()">GENERATE PASSPORT</button>
+        </div>
+        <div class="alert success" id="passport-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3>Log Work Claim</h3>
+        <p style="margin-bottom:16px">Submit today's work for peer verification.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="number" id="w-hours" placeholder="Hours worked (max 12)" min="1" max="12"/>
+          <input type="text" id="w-task" placeholder="Task description"/>
+          <button class="btn secondary" onclick="submitClaim()">SUBMIT CLAIM</button>
+        </div>
+        <div class="alert success" id="claim-alert"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="passport" id="passport-card">
+        <div class="passport-header">
+          <div class="avatar" id="p-avatar">?</div>
+          <div>
+            <div style="font-size:1rem;font-weight:700" id="p-name">—</div>
+            <div class="passport-id" id="p-id">ID: NOT GENERATED</div>
+            <div class="passport-id" id="p-loc" style="color:#666">—</div>
+          </div>
+        </div>
+        <div class="badge-row" id="p-badges">
+          <div class="badge blue">TESTNET</div>
+        </div>
+        <div class="score-bar">
+          <label><span>Reputation Score</span><span id="rep-val">0%</span></label>
+          <div class="bar-bg"><div class="bar-fill green" id="rep-bar" style="width:0%"></div></div>
+        </div>
+        <div class="score-bar">
+          <label><span>Verification Depth</span><span id="vd-val">0%</span></label>
+          <div class="bar-bg"><div class="bar-fill blue" id="vd-bar" style="width:0%"></div></div>
+        </div>
+        <div class="score-bar">
+          <label><span>Chain Tenure</span><span id="ct-val">0%</span></label>
+          <div class="bar-bg"><div class="bar-fill orange" id="ct-bar" style="width:0%"></div></div>
+        </div>
+        <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+          <h3 style="font-size:0.75rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">WORK LOG (ON-CHAIN)</h3>
+          <table class="log-table" id="work-log">
+            <tr><th>DATE</th><th>HOURS</th><th>STATUS</th><th>TX HASH</th></tr>
+          </table>
+          <p style="color:var(--muted);font-size:0.75rem;margin-top:10px;font-family:'Space Mono',monospace">No records yet. Submit a work claim.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VERIFY -->
+<section id="verify" class="section">
+  <h2>PEER VERIFICATION PROTOCOL</h2>
+  <div class="credit-info">
+    <span class="icon">ℹ️</span>
+    <span>Proof-of-Human-Work: 3 physically-present peers must sign each work claim. False verification damages the verifier's reputation score.</span>
+  </div>
+
+  <div class="verify-flow" id="verify-flow">
+    <div class="verify-node verified" id="vn0">
+      <div class="icon">📋</div>
+      <div style="font-weight:600;font-size:0.8rem">CLAIM</div>
+      <div style="color:var(--muted)">Submitted</div>
+    </div>
+    <div class="verify-arrow" id="va0"></div>
+    <div class="verify-node" id="vn1">
+      <div class="icon">👷</div>
+      <div style="font-weight:600;font-size:0.8rem">PEER 1</div>
+      <div style="color:var(--muted)" id="v1s">Awaiting</div>
+    </div>
+    <div class="verify-arrow" id="va1"></div>
+    <div class="verify-node" id="vn2">
+      <div class="icon">👷</div>
+      <div style="font-weight:600;font-size:0.8rem">PEER 2</div>
+      <div style="color:var(--muted)" id="v2s">Awaiting</div>
+    </div>
+    <div class="verify-arrow" id="va2"></div>
+    <div class="verify-node" id="vn3">
+      <div class="icon">👷</div>
+      <div style="font-weight:600;font-size:0.8rem">PEER 3</div>
+      <div style="color:var(--muted)" id="v3s">Awaiting</div>
+    </div>
+    <div class="verify-arrow" id="va3"></div>
+    <div class="verify-node" id="vn4">
+      <div class="icon">🔒</div>
+      <div style="font-weight:600;font-size:0.8rem">SEALED</div>
+      <div style="color:var(--muted)" id="v4s">Pending</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:20px">
+    <div class="card">
+      <h3>Simulate Incoming Verification Request</h3>
+      <p style="margin-bottom:16px">You receive a QR scan from a peer worker. Review and sign.</p>
+      <div style="padding:14px;background:#0d0d0d;border-radius:6px;margin-bottom:16px;font-family:'Space Mono',monospace;font-size:0.72rem;color:#bbb;line-height:1.8">
+        <div>WORKER: <span style="color:var(--accent)">Amina K. / 0x7f3a…b82e</span></div>
+        <div>CLAIM: <span style="color:#ccc">8 hrs — Tea Harvesting, Row 14</span></div>
+        <div>DATE: <span style="color:#ccc" id="today-date"></span></div>
+        <div>LOCATION: <span style="color:#ccc">Kericho, KE (GPS: ±12m)</span></div>
+        <div>REQUIRES: <span style="color:var(--warning)">3 of 3 peers present</span></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="runVerify()">▶ RUN SIMULATION</button>
+        <button class="btn secondary" onclick="resetVerify()">RESET</button>
+      </div>
+      <div class="alert success" id="verify-alert"></div>
+    </div>
+
+    <div class="card">
+      <h3>Live Verification Log</h3>
+      <div id="verify-log" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:#666;line-height:1.8;min-height:120px">
+        Waiting to start simulation...
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
+    <h3 style="margin-bottom:12px;color:var(--muted);font-size:0.75rem;letter-spacing:2px">TRUST NETWORK VISUALIZATION</h3>
+    <canvas id="net-canvas" height="200"></canvas>
+  </div>
+</section>
+
+<!-- SUPPLY CHAIN -->
+<section id="supplychain" class="section">
+  <h2>SUPPLY CHAIN ORACLE</h2>
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Generate Batch Certificate</h3>
+        <p style="margin-bottom:16px">Link a product batch to verified labor records.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="sc-brand" placeholder="Brand / Company name"/>
+          <input type="text" id="sc-product" placeholder="Product (e.g. Single Origin Coffee — Ethiopia)"/>
+          <input type="number" id="sc-workers" placeholder="# of verified workers in batch" min="1"/>
+          <input type="number" id="sc-kg" placeholder="Batch weight (kg)"/>
+          <button class="btn orange" onclick="genQR()">GENERATE CERTIFICATE + QR</button>
+        </div>
+        <div class="alert success" id="sc-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px">Recent Certifications</h3>
+        <table class="log-table">
+          <tr><th>BRAND</th><th>PRODUCT</th><th>WORKERS</th><th>STATUS</th></tr>
+          <tr><td>FairHarvest</td><td>Kenya AA Tea</td><td>23</td><td><span class="tag ok">CERTIFIED</span></td></tr>
+          <tr><td>TrueRoast</td><td>Ethiopia Yirgacheffe</td><td>17</td><td><span class="tag ok">CERTIFIED</span></td></tr>
+          <tr><td>PureThread</td><td>Organic Cotton Batch</td><td>41</td><td><span class="tag warn">REVIEW</span></td></tr>
+          <tr><td>MineRight Co</td><td>Cobalt — DRC</td><td>8</td><td><span class="tag err">FLAGGED</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="qr-box" id="qr-area">
+        <div style="font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--muted);letter-spacing:2px">BATCH CERTIFICATE</div>
+        <canvas id="qr-canvas" width="200" height="200" class="qr-svg"></canvas>
+        <div id="qr-data" style="font-family:'Space Mono',monospace;font-size:0.68rem;color:#888;margin-top:8px;line-height:1.6">
+          Fill in batch details and generate.
+        </div>
+        <div id="qr-badges" class="badge-row" style="justify-content:center;margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINANCE -->
+<section id="finance" class="section">
+  <h2>LABOR AS COLLATERAL</h2>
+  <div class="credit-info">
+    <span class="icon">💡</span>
+    <span>On-chain work history replaces bank statements. Verified labor tenure is the credit score of the unbanked global workforce.</span>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>Credit Score Calculator</h3>
+        <p style="margin-bottom:16px">Estimate on-chain labor creditworthiness.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="number" id="f-months" placeholder="Months of verified on-chain work" min="1" max="120"/>
+          <input type="number" id="f-peers" placeholder="Avg peer verifiers per claim" min="1" max="20"/>
+          <input type="number" id="f-hrs" placeholder="Avg hours/week claimed"/>
+          <button class="btn" onclick="calcCredit()">CALCULATE CREDIT SCORE</button>
+        </div>
+        <div class="alert success" id="finance-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Income Consistency</h3>
+        <div class="chart-wrap" id="income-chart"></div>
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:6px;padding:0 2px">
+          <span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span><span>JUN</span><span>JUL</span><span>AUG</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:20px">Labor Credit Report</h3>
+      <div id="credit-report">
+        <div style="font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--muted);text-align:center;padding:40px 0">
+          Run the calculator to generate a report
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI MONITOR -->
+<section id="ai" class="section">
+  <h2>AI ANOMALY DETECTION</h2>
+  <p style="margin-bottom:24px;max-width:600px">The AI layer monitors verification patterns for collusion. If a group consistently verifies unrealistic hours, the system flags them for random spot checks — keeping it honest without centralized control.</p>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-bottom:16px">Run Anomaly Scan</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <select id="ai-region">
+            <option>All Regions</option>
+            <option>Kericho, Kenya</option>
+            <option>Oromia, Ethiopia</option>
+            <option>Ashanti, Ghana</option>
+            <option>Dhaka, Bangladesh</option>
+          </select>
+          <select id="ai-type">
+            <option>All Anomaly Types</option>
+            <option>Impossible Hours (>16/day)</option>
+            <option>Clique Collusion Pattern</option>
+            <option>GPS Mismatch</option>
+            <option>Timestamp Clustering</option>
+          </select>
+          <button class="btn" onclick="runAI()">RUN AI SCAN</button>
+        </div>
+        <div class="alert warn" id="ai-alert"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px">Model Stats</h3>
+        <div class="score-bar">
+          <label><span>Precision</span><span>94.2%</span></label>
+          <div class="bar-bg"><div class="bar-fill green" style="width:94%"></div></div>
+        </div>
+        <div class="score-bar">
+          <label><span>Recall</span><span>88.7%</span></label>
+          <div class="bar-bg"><div class="bar-fill blue" style="width:89%"></div></div>
+        </div>
+        <div class="score-bar">
+          <label><span>False Positive Rate</span><span>3.1%</span></label>
+          <div class="bar-bg"><div class="bar-fill orange" style="width:3%"></div></div>
+        </div>
+        <p style="margin-top:12px;font-size:0.75rem">Trained on <strong style="color:var(--text)">12,400</strong> synthetic records. Spot-check escalation at risk score &gt; 0.72.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3 style="margin-bottom:16px">Detection Results</h3>
+        <div id="ai-results">
+          <div style="font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--muted);text-align:center;padding:40px 0">
+            Run a scan to see flagged patterns
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// ── NAV ──────────────────────────────────────────────────────────────────────
+function goto(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const idx = ['home','passport','verify','supplychain','finance','ai'].indexOf(id);
+  document.querySelectorAll('nav button')[idx].classList.add('active');
+  if(id==='verify') drawNet();
+  if(id==='finance') drawIncomeChart();
+}
+
+// ── LIVE COUNTERS ─────────────────────────────────────────────────────────────
+setInterval(() => {
+  const bump = el => el.textContent = (+el.textContent.replace(/,/g,'')+Math.floor(Math.random()*2)).toLocaleString();
+  bump(document.getElementById('cnt-workers'));
+  bump(document.getElementById('cnt-verif'));
+  bump(document.getElementById('cnt-blocks'));
+}, 3000);
+
+// ── PASSPORT ──────────────────────────────────────────────────────────────────
+let passportData = null;
+function rndHash() { return '0x' + [...Array(8)].map(()=>Math.floor(Math.random()*16).toString(16)).join('') + '…' + [...Array(4)].map(()=>Math.floor(Math.random()*16).toString(16)).join(''); }
+function rndTx() { return '0x' + [...Array(8)].map(()=>Math.floor(Math.random()*16).toString(16)).join(''); }
+
+function createPassport() {
+  const name = document.getElementById('w-name').value.trim();
+  const loc = document.getElementById('w-location').value.trim();
+  const sector = document.getElementById('w-sector').value;
+  if(!name||!loc||!sector){ showAlert('passport-alert','Fill in all fields.','error'); return; }
+
+  passportData = { name, loc, sector, id: rndHash(), rep: Math.floor(40+Math.random()*30), vd: Math.floor(20+Math.random()*40), ct: 5 };
+
+  document.getElementById('p-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('p-name').textContent = name;
+  document.getElementById('p-id').textContent = 'ID: ' + passportData.id;
+  document.getElementById('p-loc').textContent = loc + ' · ' + sector;
+
+  const badges = document.getElementById('p-badges');
+  badges.innerHTML = `<div class="badge green">VERIFIED</div><div class="badge blue">${sector.split('—')[0].trim().toUpperCase()}</div><div class="badge orange">TESTNET</div>`;
+
+  animBar('rep-bar', passportData.rep, 'rep-val', '%');
+  animBar('vd-bar', passportData.vd, 'vd-val', '%');
+  animBar('ct-bar', passportData.ct, 'ct-val', '%');
+
+  showAlert('passport-alert', '✓ Passport generated on testnet! Hash: ' + passportData.id, 'success');
+}
+
+function animBar(barId, val, valId, suffix) {
+  const bar = document.getElementById(barId);
+  const lbl = document.getElementById(valId);
+  bar.style.width = '0%'; lbl.textContent = '0' + suffix;
+  setTimeout(() => {
+    bar.style.width = val + '%';
+    let current = 0;
+    const iv = setInterval(() => {
+      current = Math.min(current + 2, val);
+      lbl.textContent = current + suffix;
+      if(current >= val) clearInterval(iv);
+    }, 20);
+  }, 100);
+}
+
+function submitClaim() {
+  const hrs = document.getElementById('w-hours').value;
+  const task = document.getElementById('w-task').value.trim();
+  if(!hrs||!task){ showAlert('claim-alert','Fill in hours and task.','error'); return; }
+  if(+hrs>12){ showAlert('claim-alert','⚠ Hours > 12 flagged for AI review.','error'); return; }
+
+  const table = document.getElementById('work-log');
+  const prev = table.querySelector('p');
+  if(prev) prev.remove();
+  const row = table.insertRow(1);
+  const today = new Date().toISOString().slice(0,10);
+  row.innerHTML = `<td>${today}</td><td>${hrs}h</td><td><span class="tag warn">PENDING</span></td><td class="hash">${rndTx()}</td>`;
+  showAlert('claim-alert', '✓ Claim submitted. Awaiting 3 peer verifications.', 'success');
+
+  setTimeout(() => {
+    row.cells[2].innerHTML = '<span class="tag ok">VERIFIED</span>';
+  }, 4000);
+}
+
+// ── VERIFY ────────────────────────────────────────────────────────────────────
+document.getElementById('today-date').textContent = new Date().toDateString();
+let verifyRunning = false;
+
+function resetVerify() {
+  verifyRunning = false;
+  [1,2,3].forEach(i => {
+    const n = document.getElementById('vn'+i);
+    n.classList.remove('verified','pending');
+    document.getElementById('v'+i+'s').textContent = 'Awaiting';
+    document.getElementById('va'+(i-1)).classList.remove('active');
+  });
+  document.getElementById('vn4').classList.remove('verified');
+  document.getElementById('v4s').textContent = 'Pending';
+  document.getElementById('va3').classList.remove('active');
+  document.getElementById('verify-log').innerHTML = 'Waiting to start simulation...';
+  showAlert('verify-alert','','success');
+}
+
+const peers = [
+  {name:'Amina K.', id:'0x7f3a…b82e'},
+  {name:'Joseph O.', id:'0x4c1d…a3f1'},
+  {name:'Fatuma W.', id:'0x9b22…e7c0'}
+];
+
+function runVerify() {
+  if(verifyRunning) return;
+  verifyRunning = true;
+  const log = document.getElementById('verify-log');
+  log.innerHTML = '';
+
+  function addLog(msg, color) {
+    const ts = new Date().toLocaleTimeString();
+    log.innerHTML += `<div style="color:${color||'#888'}">[${ts}] ${msg}</div>`;
+  }
+
+  addLog('Claim received from Amina K. (0x7f3a…b82e)');
+  addLog('Initiating Proof-of-Human-Work consensus...');
+
+  [1,2,3].forEach((i, idx) => {
+    const delay = (idx+1)*1800;
+    document.getElementById('vn'+i).classList.add('pending');
+    document.getElementById('v'+i+'s').textContent = 'Signing…';
+
+    setTimeout(() => {
+      const p = peers[idx];
+      addLog(`✓ ${p.name} (${p.id}) signed — GPS within 15m`, 'var(--accent)');
+      document.getElementById('vn'+i).classList.remove('pending');
+      document.getElementById('vn'+i).classList.add('verified');
+      document.getElementById('v'+i+'s').textContent = 'Signed ✓';
+      document.getElementById('va'+(i-1)).classList.add('active');
+
+      if(i===3) {
+        setTimeout(() => {
+          addLog('3/3 signatures collected. Sealing to IPFS + blockchain…', 'var(--accent3)');
+          addLog('Block #48292 confirmed. Record immutable.', 'var(--accent)');
+          document.getElementById('vn4').classList.add('verified');
+          document.getElementById('v4s').textContent = 'On-chain ✓';
+          document.getElementById('va3').classList.add('active');
+          showAlert('verify-alert', '✓ Work claim sealed to chain! TX: ' + rndTx(), 'success');
+          verifyRunning = false;
+        }, 1000);
+      }
+    }, delay);
+  });
+}
+
+// ── NETWORK VIZ ───────────────────────────────────────────────────────────────
+function drawNet() {
+  const canvas = document.getElementById('net-canvas');
+  const W = canvas.offsetWidth; canvas.width = W; canvas.height = 200;
+  const ctx = canvas.getContext('2d');
+  const nodes = [
+    {x:W/2, y:100, r:16, color:'#00ff88', label:'YOU'},
+    ...Array.from({length:8}, (_,i) => ({
+      x: W/2 + Math.cos(i*Math.PI/4)*120, y: 100+Math.sin(i*Math.PI/4)*70, r:10,
+      color: Math.random()>0.3 ? '#4fc3f7' : '#ff6b35',
+      label: ['AM','JO','FA','KI','MO','NA','AB','CH'][i]
+    }))
+  ];
+  ctx.clearRect(0,0,W,200);
+  nodes.slice(1).forEach(n => {
+    ctx.strokeStyle = 'rgba(0,255,136,0.15)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(W/2,100); ctx.lineTo(n.x,n.y); ctx.stroke();
+  });
+  nodes.forEach(n => {
+    ctx.shadowColor = n.color; ctx.shadowBlur = 10;
+    ctx.fillStyle = n.color;
+    ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#000'; ctx.font='bold 7px Space Mono,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n.label, n.x, n.y);
+  });
+}
+
+// ── QR GENERATOR ─────────────────────────────────────────────────────────────
+function genQR() {
+  const brand = document.getElementById('sc-brand').value.trim();
+  const product = document.getElementById('sc-product').value.trim();
+  const workers = document.getElementById('sc-workers').value;
+  const kg = document.getElementById('sc-kg').value;
+  if(!brand||!product||!workers){ showAlert('sc-alert','Fill in all fields.','error'); return; }
+
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,200,200);
+
+  // Draw pseudo-QR pattern
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,200,200);
+  const grid=20, size=200/grid;
+  const pattern = Array.from({length:grid*grid}, ()=>Math.random()>0.5?1:0);
+  // Corner markers
+  [[0,0],[14,0],[0,14]].forEach(([gx,gy])=>{
+    for(let dy=0;dy<6;dy++) for(let dx=0;dx<6;dx++) pattern[((gy+dy)*grid)+(gx+dx)]=1;
+    for(let dy=1;dy<5;dy++) for(let dx=1;dx<5;dx++) pattern[((gy+dy)*grid)+(gx+dx)]=0;
+    for(let dy=2;dy<4;dy++) for(let dx=2;dx<4;dx++) pattern[((gy+dy)*grid)+(gx+dx)]=1;
+  });
+  ctx.fillStyle='#000';
+  pattern.forEach((v,i)=>{ if(v){ctx.fillRect((i%grid)*size,(Math.floor(i/grid))*size,size,size); }});
+
+  // Badge overlay
+  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(10,160,180,30);
+  ctx.fillStyle='#00ff88'; ctx.font='bold 9px Space Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('✓ POW CERTIFIED · ' + brand.toUpperCase(), 100, 179);
+
+  const certId = 'POW-' + Math.random().toString(36).slice(2,8).toUpperCase();
+  document.getElementById('qr-data').innerHTML = `
+    <strong style="color:var(--accent)">${certId}</strong><br>
+    ${brand} · ${product}<br>
+    Workers: ${workers} verified · ${kg||'?'}kg batch<br>
+    IPFS: Qm${rndTx().slice(2)}...`;
+  document.getElementById('qr-badges').innerHTML = `<div class="badge green">VERIFIED LABOR</div><div class="badge blue">${workers} WORKERS</div>`;
+  showAlert('sc-alert', '✓ Certificate ' + certId + ' generated.', 'success');
+}
+
+// ── FINANCE ───────────────────────────────────────────────────────────────────
+function drawIncomeChart() {
+  const data = [72,68,80,75,85,78,90,88];
+  const chart = document.getElementById('income-chart');
+  chart.innerHTML = '';
+  data.forEach((v,i)=>{
+    const col = document.createElement('div'); col.className='bar-col';
+    const b = document.createElement('div'); b.className='b';
+    b.style.background = 'var(--accent)'; b.style.opacity='0.7';
+    b.style.height='0px';
+    col.appendChild(b);
+    chart.appendChild(col);
+    setTimeout(()=>{ b.style.transition='height 0.7s ease'; b.style.height=(v*1.4)+'px'; }, i*80);
+  });
+}
+
+function calcCredit() {
+  const months = +document.getElementById('f-months').value||0;
+  const peers = +document.getElementById('f-peers').value||0;
+  const hrs = +document.getElementById('f-hrs').value||0;
+  if(!months||!peers||!hrs){ showAlert('finance-alert','Fill in all fields.','error'); return; }
+
+  const score = Math.min(850, Math.round(
+    (months * 4.5) + (Math.min(peers,10) * 15) + (Math.min(hrs,40) * 2.5) + 300
+  ));
+  const tier = score > 720 ? 'PRIME' : score > 580 ? 'STANDARD' : 'EMERGING';
+  const tierColor = score > 720 ? 'var(--accent)' : score > 580 ? 'var(--accent3)' : 'var(--warning)';
+  const maxLoan = (score * months * 2.8).toLocaleString();
+
+  document.getElementById('credit-report').innerHTML = `
+    <div style="text-align:center;padding:20px 0;border-bottom:1px solid var(--border);margin-bottom:20px">
+      <div style="font-size:3rem;font-weight:800;color:${tierColor};font-family:'Space Mono',monospace">${score}</div>
+      <div style="font-size:0.75rem;color:var(--muted);letter-spacing:2px">LABOR CREDIT SCORE</div>
+      <div class="badge" style="display:inline-block;margin-top:8px;background:rgba(0,255,136,0.1);color:${tierColor};border:1px solid ${tierColor}">${tier} TIER</div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.75rem;line-height:2">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">ON-CHAIN TENURE</span><span>${months} months</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">AVG PEER DEPTH</span><span>${peers} verifiers</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">WEEKLY HOURS</span><span>${hrs} hrs</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:8px"><span style="color:var(--muted)">MAX LOAN ESTIMATE</span><span style="color:var(--accent)">$${maxLoan} USD</span></div>
+    </div>
+    <div class="alert success show" style="margin-top:16px">✓ Report generated. No bank account required.</div>
+  `;
+  showAlert('finance-alert','','success');
+}
+
+// ── AI MONITOR ────────────────────────────────────────────────────────────────
+const anomalyData = [
+  { icon:'🚨', label:'Clique: Group_44 (7 workers)', detail:'Verified each other 14x in 48hrs — all identical hour claims', risk:'high', score:'0.91' },
+  { icon:'⚠️', label:'GPS mismatch: Claim_0x7f3…', detail:'Worker claimed Kericho but GPS coordinates place in Nairobi', risk:'med', score:'0.74' },
+  { icon:'⚠️', label:'Timestamp cluster: 6 claims', detail:'6 independent claims all submitted within 90-second window', risk:'med', score:'0.68' },
+  { icon:'✅', label:'Cluster_12 (22 workers)', detail:'Consistent patterns, normal hour distribution, diverse verifiers', risk:'low', score:'0.09' },
+  { icon:'✅', label:'Region: Oromia (41 workers)', detail:'No anomalies detected. Peer graph is decentralized.', risk:'low', score:'0.04' },
+];
+
+function runAI() {
+  const res = document.getElementById('ai-results');
+  res.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:0.75rem;color:var(--accent);margin-bottom:12px">SCANNING... ▌</div>';
+  showAlert('ai-alert','AI scan running on synthetic dataset...','warn');
+
+  setTimeout(() => {
+    res.innerHTML = '';
+    anomalyData.forEach((a, i) => {
+      setTimeout(() => {
+        const div = document.createElement('div');
+        div.className = `anomaly-item ${a.risk==='high'?'err':a.risk==='med'?'warn':'ok'}`;
+        div.innerHTML = `
+          <div class="anomaly-icon">${a.icon}</div>
+          <div class="anomaly-info">
+            <strong>${a.label}</strong>
+            <span>${a.detail}</span>
+          </div>
+          <div><span class="risk-pill ${a.risk}">RISK ${a.score}</span></div>
+        `;
+        res.appendChild(div);
+      }, i*300);
+    });
+    setTimeout(()=>{
+      showAlert('ai-alert', '⚠ 2 high/med risk patterns flagged for spot-check.', 'warn');
+    }, anomalyData.length*300+200);
+  }, 1200);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if(!msg){ el.classList.remove('show'); return; }
+  el.textContent = msg;
+  el.className = `alert ${type} show`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+drawIncomeChart();
+</script>
+</body>
+</html>
